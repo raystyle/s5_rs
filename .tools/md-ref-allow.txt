@@ -1,0 +1,27 @@
+# md-ref-scan 豁免清单：每行一条正则（反斜杠需写成 \\），匹配引用串则不计断链
+# 历史快照中的当时路径（改写即篡改历史）
+^docs\\MISTAKES\.md$
+^docs\\PLAN\.md$
+^docs\\TODO\.md$
+^docs\\research\\YouMind无头模式与YOLO免审批对照.*$
+^docs\\research\\guide\.md$
+^docs\\references\\项目定位-通用多Agents自动配置和任务编排器\.md$
+# 占位符模式（格式说明非真实文件）
+^docs\\proven\\PNNNN-短名\.md$
+^template\.md$
+# 外部仓内路径（描述性引用，非本仓文件）
+^docs/scripting-sdk\.md$
+^docs/interaction\.md$
+^docs/en/hooks\.md$
+^docs/zh/customization/hooks\.md$
+^docs\\research\\S010-agent-无头模式.*$
+^docs.web.share-src.
+^docs/specs/web-share-e2ee-protocol-v1\.md$
+^docs/user-guide/.*\.md$
+
+# ADR-0006 清退批（2026-09-17）：历史档案（diary、research）指向已删除出仓件的当时路径
+^GOAL\.md$
+^INDEX\.md$
+^docs\\references\\R004-测试标准细则-分层断言与门禁流程\.md$
+^docs\\references\\R005-选型研究细则-cratesio与github双通道\.md$
+^docs\\proven\\P0027-四环境部署自适应-hook形态与状态栏\.md$

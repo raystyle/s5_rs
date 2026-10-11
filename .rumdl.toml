@@ -1,0 +1,23 @@
+# rumdl：对应 AGENTS 操作规则「写文档时」
+# 保留格式类规则；关闭与中文技术文档冲突的内容风格类。
+
+[global]
+flavor = "standard"
+respect-gitignore = true
+exclude = [".git", "target", "docs/web/share-src", "docs/aidoc"]
+
+[MD013]
+enabled = false
+
+[MD041]
+enabled = false
+
+[MD028]
+enabled = false
+
+[MD036]
+enabled = false
+
+# dev-evo ADR/REQ 模板带 YAML title，正文 h1 是文件题（不视为重复顶级）
+[MD025]
+front_matter_title = ""

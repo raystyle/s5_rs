@@ -1,0 +1,12 @@
+# s5_rs
+
+> S5(Shared Store & Streams):agent 跨机共享 CLI 库面。
+
+## s5-cli 0.1.0
+
+- [s5-cli overview](s5_cli/index.md): S5(Shared Store & Streams):agent 跨机共享 CLI 库面。
+- [s5-cli::config](s5_cli/config.md): 配置层:零感知凭据的落点(ADR-0001)。
+- [s5-cli::filechan](s5_cli/filechan.md): 文件道:S3 对象交换(garage 兼容后端,put/get/ls/del)。
+- [s5-cli::llms](s5_cli/llms.md): `s5 --llms` 手册面:由活命令树渲染,无生成物落盘(家族形,对齐
+- [s5-cli::streamchan](s5_cli/streamchan.md): 流道:S2 耐久追加流(s2-lite 兼容后端,append/tail/streams)。
+

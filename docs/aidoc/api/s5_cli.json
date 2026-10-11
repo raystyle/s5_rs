@@ -1,0 +1,151 @@
+{
+  "crate": "s5-cli",
+  "version": "0.1.0",
+  "items": [
+    {
+      "path": "s5_cli::config",
+      "kind": "module",
+      "docs": "配置层:零感知凭据的落点(ADR-0001)。\n\ngarage 实测不支持匿名访问,凭据(S3 key 与 S2 token)收进本层;agent\n命令面零凭据参数。配置文件 TOML 0600(`S5_CONFIG` 覆盖路径,缺省\nXDG `s5/config.toml`),不进 git;环境变量逐键覆盖(测试与无头场景)。\n\n读序:环境变量 > 配置文件 > 随包缺省(内网 dev 指向;生产切换只改配置)。"
+    },
+    {
+      "path": "s5_cli::config::Config",
+      "kind": "struct",
+      "docs": "顶层配置:两道后端一段一节。"
+    },
+    {
+      "path": "s5_cli::config::ConfigError",
+      "kind": "enum",
+      "docs": "一处配置错误(路径、解析、未知键)。"
+    },
+    {
+      "path": "s5_cli::config::S2Section",
+      "kind": "struct",
+      "docs": "流道(S2)段:端点、basin 与占位 token。"
+    },
+    {
+      "path": "s5_cli::config::S3Section",
+      "kind": "struct",
+      "docs": "文件道(S3)段:endpoint、region、桶与静态密钥。"
+    },
+    {
+      "path": "s5_cli::filechan",
+      "kind": "module",
+      "docs": "文件道:S3 对象交换(garage 兼容后端,put/get/ls/del)。\n\n选型 object_store 的 aws feature(RS 见 docs/knowledge/research/S001):\nIP 端点必须 path-style(object_store 默认即是),HTTP 端点显式\n`allow_http`;region 必须等于服务端 `s3_region`(SigV4 scope 敏感)。\ngarage v1.1.0 边界:无版本化(删即真删、覆盖不留旧版)、无 Put 条件\n写(同键并发后写获胜,不承诺原子创建)、小文件走单次 Put 不上分片、\n列举由 object_store 内部跟 continuation 页。"
+    },
+    {
+      "path": "s5_cli::filechan::FileError",
+      "kind": "enum",
+      "docs": "一处文件道错误(S3 语义错带 code,供 CLI 单行 JSON 出 stderr)。"
+    },
+    {
+      "path": "s5_cli::filechan::ObjectRow",
+      "kind": "struct",
+      "docs": "ls 的对象行。"
+    },
+    {
+      "path": "s5_cli::filechan::PutOutcome",
+      "kind": "struct",
+      "docs": "put 的产物行。"
+    },
+    {
+      "path": "s5_cli::filechan::del",
+      "kind": "function",
+      "docs": "`s5 del <key>`:删除(S3 语义幂等:键不存在同样报成功)。\n\n# Errors\n\n键不合法、客户端构造失败或传输错(键不存在不报错)。"
+    },
+    {
+      "path": "s5_cli::filechan::get",
+      "kind": "function",
+      "docs": "`s5 get <key>`:取回对象字节(调用方决定落 stdout 还是文件)。\n\n# Errors\n\n键不合法、客户端构造失败、键不存在(NoSuchKey)或传输错。"
+    },
+    {
+      "path": "s5_cli::filechan::ls",
+      "kind": "function",
+      "docs": "`s5 ls [prefix]`:前缀列举(字面前缀非 glob;空前缀全列),键序升序。\n\n# Errors\n\n客户端构造失败、列举翻页中传输或 S3 语义错。"
+    },
+    {
+      "path": "s5_cli::filechan::put",
+      "kind": "function",
+      "docs": "`s5 put <file> <key>`:本地文件(或 `-` stdin)整读单次上传。\n\n# Errors\n\n键不合法、本地源读失败、客户端构造失败或后端 S3 语义错。"
+    },
+    {
+      "path": "s5_cli::llms",
+      "kind": "module",
+      "docs": "`s5 --llms` 手册面:由活命令树渲染,无生成物落盘(家族形,对齐\nhst_rs ADR-0005:命令树是真源,手册是投影,漂移在源头不可能)。\n\n双形态:裸 `--llms` 出 markdown 手册(至多 120 行),`--llms --json`\n出机器形({name, version, description, commands[]} 递归)。"
+    },
+    {
+      "path": "s5_cli::llms::llm_machine_form",
+      "kind": "function",
+      "docs": "`s5 --llms --json` 机器形态:命令树递归,组到叶。"
+    },
+    {
+      "path": "s5_cli::llms::render_llms",
+      "kind": "function",
+      "docs": "渲染 markdown 手册(子命令表逐行带用法串与说明)。"
+    },
+    {
+      "path": "s5_cli::streamchan",
+      "kind": "module",
+      "docs": "流道:S2 耐久追加流(s2-lite 兼容后端,append/tail/streams)。\n\n官方 `s2-sdk`(tokio),端点经 [`S2Endpoints::for_endpoint`] 单 URL 双用\n(lite 无子域路由,basin 由 SDK 经 `S2-Basin` 头承载);lite 无鉴权面,\ntoken 占位 `ignored`(ADR-0001 零感知凭据)。\n\n语义要点(RS 见 docs/knowledge/research/S001):\n- 追加:一行一条记录;单批上限 1000 条或 1 MiB 计量字节,超出拆批,\n  ack 汇总为首批 start 与末批 end/tail;空输入不发请求。\n- 自动建流:basin 未开 `create_stream_on_append`(本机实况),首条\n  append 前建流;`already exists` 视为成功,不触碰既有流配置。\n- 读回:`tail` 默认有界退出(对齐 unix tail / kubectl logs 先例),\n  `-f` 才跟随;`--seq` 给续读游标;越过 tail 的起点是「游标在尾上」\n  而非故障,退 0 空出。\n- 输出 JSONL:记录一行一对象;body 是 UTF-8 时 `body` 字符串,否则\n  `body_b64` base64(记录本体是任意字节,不做有损转义)。\n\n[S2Endpoints::for_endpoint]: s2_sdk::types::S2Endpoints::for_endpoint"
+    },
+    {
+      "path": "s5_cli::streamchan::AppendOutcome",
+      "kind": "struct",
+      "docs": "append 的产物行(AppendAck 原字段名,多批汇总为首批 start 与末批 end/tail)。"
+    },
+    {
+      "path": "s5_cli::streamchan::BATCH_MAX_BYTES",
+      "kind": "constant",
+      "docs": "单批计量字节上限(S2 平台限制 1 MiB;留余量取 768 KiB)。"
+    },
+    {
+      "path": "s5_cli::streamchan::BATCH_MAX_RECORDS",
+      "kind": "constant",
+      "docs": "单批记录条数上限(S2 平台限制 1000)。"
+    },
+    {
+      "path": "s5_cli::streamchan::FollowEnd",
+      "kind": "enum",
+      "docs": "follow 的收束因。"
+    },
+    {
+      "path": "s5_cli::streamchan::PosOut",
+      "kind": "struct",
+      "docs": "位置三件(append ack 与游标面的原子形)。"
+    },
+    {
+      "path": "s5_cli::streamchan::RecordRow",
+      "kind": "struct",
+      "docs": "tail 的记录行(JSONL;UTF-8 走 body,任意字节走 body_b64)。"
+    },
+    {
+      "path": "s5_cli::streamchan::StreamError",
+      "kind": "enum",
+      "docs": "一处流道错误(服务端语义错带 code,供 CLI 单行 JSON 出 stderr)。"
+    },
+    {
+      "path": "s5_cli::streamchan::StreamRow",
+      "kind": "struct",
+      "docs": "streams 的流行。"
+    },
+    {
+      "path": "s5_cli::streamchan::append",
+      "kind": "function",
+      "docs": "`s5 append <stream>`:逐行成记录追加;自动建流;返回 None 表零输入。\n\n建流只认 `ResourceAlreadyExists` 为已存在(不 reconfigure 既有流);\nbasin 未开 `create_stream_on_append` 的实况由这条兜住。\n\n# Errors\n\n流名不合法、建流被拒(非 already-exists)、批量校验或追加传输错。"
+    },
+    {
+      "path": "s5_cli::streamchan::follow",
+      "kind": "function",
+      "docs": "`s5 tail -f`(跟随):先出历史(`-n`/`--seq` 同 tail),再进读会话到 SIGINT。\n\n无新数据时靠服务端会话等待(wait 语义),不做客户端忙等;历史与跟随\n之间以「已见最大序号 + 1」续接,不重不漏。\n\n# Errors\n\n流名不合法、流不存在或读会话中途传输错。"
+    },
+    {
+      "path": "s5_cli::streamchan::list_streams",
+      "kind": "function",
+      "docs": "`s5 streams`:列配置 basin 下的流(可选字面前缀),名序。\n\n# Errors\n\nbasin 名不合法、前缀不合法或列举传输错。"
+    },
+    {
+      "path": "s5_cli::streamchan::tail",
+      "kind": "function",
+      "docs": "`s5 tail <stream>`(有界):读最近 N 条或 `--seq S` 起的全部已写记录。\n\n单批服务端上限 1000 条/1 MiB;`-n` 夹到该量级(20 缺省);`--seq`\n在尾上或越尾(ReadUnwritten)是游标已到位而非故障,退空。\n\n# Errors\n\n流名不合法、流不存在或传输错(`--seq` 越尾不算错,退空)。"
+    }
+  ]
+}
