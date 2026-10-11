@@ -1,8 +1,8 @@
 # Changelog
 
-## 0.1.0 (2026-10-11)
+## 0.1.0
 
-首版(REQ-0001,单 s5-01):
+> 2026-10-11。首版(REQ-0001,单 s5-01):
 
 - 文件道:S3 put/get/ls/del(object_store 0.14,garage path-style)
 - 流道:S2 append/tail/streams(s2-sdk 0.35,自动建流、批拆、有界尾读、
