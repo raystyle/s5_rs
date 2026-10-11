@@ -1,0 +1,54 @@
+[lints.rust]
+missing_docs = "deny"
+
+[lints.rustdoc]
+broken_intra_doc_links = "deny"
+private_intra_doc_links = "deny"
+
+[lints.clippy]
+empty_docs = "deny"
+missing_safety_doc = "deny"
+missing_errors_doc = "warn"
+missing_panics_doc = "warn"
+
+[package]
+name = "s5-cli"
+version = "0.1.0"
+edition = "2021"
+description = "S5(Shared Store & Streams):agent 跨机共享 CLI——S3 文件道 put/get/ls/del 与 S2 流道 append/tail"
+license = "MIT"
+repository = "https://github.com/raystyle/s5_rs"
+
+[[bin]]
+name = "s5"
+path = "src/main.rs"
+
+[lib]
+name = "s5"
+
+[dependencies]
+# 文件道(RS 见 docs/knowledge/research/S001):path-style 默认、无 smithy
+# 生成面、reqwest 与 s2-sdk 同 tokio 运行时;garage 兼容边界(无条件写、
+# 分片不上首版)见研究档。aws-sdk-s3 不选(默认校验和在兼容实现上的坑)。
+object_store = { version = "0.14", features = ["aws"] }
+# 流道官方 SDK(tokio;lite 兼容 v0.22+;端点经 S2Endpoints::for_endpoint
+# 单 URL 双用,token 占位 ignored——lite 无鉴权面,命令面零凭据参数)。
+s2-sdk = "0.35"
+anyhow = "1"
+base64 = "0.22"
+bytes = "1"
+chrono = { version = "0.4", features = ["serde"] }
+clap = { version = "4", features = ["derive"] }
+dirs = "5"
+futures-util = "0.3"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+tokio = { version = "1", features = ["full"] }
+toml = "0.8"
+
+[dev-dependencies]
+# assert_cmd 与 predicates 为 clap 官方生态标准 CLI 测试件(家族形,
+# hst_rs 同款),只进测试构建。
+assert_cmd = "2"
+predicates = "3"

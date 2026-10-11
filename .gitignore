@@ -1,0 +1,5 @@
+/target
+/dist
+/dist-pkg-verify
+# dev key 永不进 git(总台裁定;仓根明文,仅本机 dev 桶面)
+.dev-key.txt
