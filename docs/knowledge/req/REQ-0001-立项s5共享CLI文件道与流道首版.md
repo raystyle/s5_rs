@@ -37,3 +37,7 @@ S2 耐久追加流;家族第四件(herdr 信号、hst 会话态、ark 运行时�
   `cargo clippy --locked --all-targets` 0 警告。
 - 选型与边界档:docs/knowledge/research/S001;零感知凭据裁定:
   ADR-0001;选型裁定:ADR-0002。
+- 验收实弹(2026-10-12,直接使用即验收形态):流道 8090 匿名读写
+  全通;文件道 dev key 回环字节保真;两项未过如实回报:garage 匿名
+  未开(服务面)、del 对从未存在键透传 NoSuchKey 与手册幂等宣称相抵。
+  档:docs/sources/acceptance/2026-10-12-REQ-0001首版验收实弹.md。

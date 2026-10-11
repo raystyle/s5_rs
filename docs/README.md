@@ -12,6 +12,7 @@
 | [knowledge/research/](knowledge/research/README.md) | 定义 | 研究档案(S 编号,六态) |
 | [operations/](operations/README.md) | 手册 | 工具链与工作流标准(G 编号) |
 | [sources/diary/](sources/diary/README.md) | 依据 | 执行日记 |
+| [sources/acceptance/](sources/acceptance/README.md) | 依据 | 验收实弹档 |
 
 ## 写作规范
 
