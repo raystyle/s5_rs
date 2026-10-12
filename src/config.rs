@@ -31,7 +31,9 @@ pub enum ConfigError {
         source: std::io::Error,
     },
     /// `config set` 收到不在白名单里的点径键。
-    #[error("未知配置键 {0}(可设键:s3.endpoint/s3.region/s3.bucket/s3.access_key_id/s3.secret_access_key/s2.endpoint/s2.basin/s2.token)")]
+    #[error(
+        "未知配置键 {0}(可设键:s3.endpoint/s3.region/s3.bucket/s3.access_key_id/s3.secret_access_key/s3.admin_endpoint/s3.admin_token/s2.endpoint/s2.basin/s2.token)"
+    )]
     UnknownKey(String),
 }
 
@@ -48,6 +50,18 @@ pub struct S3Section {
     pub access_key_id: String,
     /// 访问密钥私钥(不进命令面、不进 git、不回显明文)。
     pub secret_access_key: String,
+    /// garage Admin API 端点(建桶道,`s5 bucket create` 用;v1 面)。
+    /// 老档缺此键时取随包缺省(serde default),不破已部署配置。
+    #[serde(default = "default_admin_endpoint")]
+    pub admin_endpoint: String,
+    /// garage admin bearer token(密钥类:不进命令面、掩码回显;空表未配)。
+    #[serde(default)]
+    pub admin_token: String,
+}
+
+/// `s3.admin_endpoint` 的 serde 缺省(老档兼容)。
+fn default_admin_endpoint() -> String {
+    "http://192.168.88.2:3903".into()
 }
 
 /// 流道(S2)段:端点、basin 与占位 token。
@@ -79,6 +93,8 @@ impl Default for Config {
                 bucket: "s5-dev".into(),
                 access_key_id: String::new(),
                 secret_access_key: String::new(),
+                admin_endpoint: "http://192.168.88.2:3903".into(),
+                admin_token: String::new(),
             },
             s2: S2Section {
                 endpoint: "http://192.168.88.2:8090".into(),
@@ -126,12 +142,14 @@ impl Config {
 
     /// 环境变量逐键覆盖(`S5_S3_*`/`S5_S2_*`);空串视作显式置空。
     fn apply_env(&mut self) {
-        let vars: [(&str, &mut String); 8] = [
+        let vars: [(&str, &mut String); 10] = [
             ("S5_S3_ENDPOINT", &mut self.s3.endpoint),
             ("S5_S3_REGION", &mut self.s3.region),
             ("S5_S3_BUCKET", &mut self.s3.bucket),
             ("S5_S3_ACCESS_KEY_ID", &mut self.s3.access_key_id),
             ("S5_S3_SECRET_ACCESS_KEY", &mut self.s3.secret_access_key),
+            ("S5_S3_ADMIN_ENDPOINT", &mut self.s3.admin_endpoint),
+            ("S5_S3_ADMIN_TOKEN", &mut self.s3.admin_token),
             ("S5_S2_ENDPOINT", &mut self.s2.endpoint),
             ("S5_S2_BASIN", &mut self.s2.basin),
             ("S5_S2_TOKEN", &mut self.s2.token),
@@ -195,6 +213,8 @@ impl Config {
             "s3.bucket" => self.s3.bucket = value.into(),
             "s3.access_key_id" => self.s3.access_key_id = value.into(),
             "s3.secret_access_key" => self.s3.secret_access_key = value.into(),
+            "s3.admin_endpoint" => self.s3.admin_endpoint = value.into(),
+            "s3.admin_token" => self.s3.admin_token = value.into(),
             "s2.endpoint" => self.s2.endpoint = value.into(),
             "s2.basin" => self.s2.basin = value.into(),
             "s2.token" => self.s2.token = value.into(),
@@ -220,6 +240,8 @@ impl Config {
                 "bucket": self.s3.bucket,
                 "access_key_id": mask(&self.s3.access_key_id),
                 "secret_access_key": mask(&self.s3.secret_access_key),
+                "admin_endpoint": self.s3.admin_endpoint,
+                "admin_token": mask(&self.s3.admin_token),
             },
             "s2": {
                 "endpoint": self.s2.endpoint,

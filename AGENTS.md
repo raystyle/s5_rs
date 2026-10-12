@@ -1,7 +1,8 @@
 # S5
 
-> S5(Shared Store & Streams):agent 跨机共享 CLI。文件道 S3 put/get/ls/del,
-> 流道 S2 append/tail。公开契约以类型签名与 `///` 契约注释为准。
+> S5(Shared Store & Streams):agent 跨机共享 CLI。文件道 S3 put/get/ls/del
+> 加 bucket create 建桶,流道 S2 append/tail。全开放共享模型(桶与流
+> 对全 agent 自由开放)。公开契约以类型签名与 `///` 契约注释为准。
 
 ## Commands
 

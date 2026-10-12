@@ -8,11 +8,16 @@ S5(Shared Store & Streams)是 agent 跨机共享 CLI:文件与工件走 S3 对�
 交换(put/get/ls/del),轨迹流与事件流走 S2 耐久追加流(append/tail)。
 家族第四件:herdr 管信号,hst 管会话态,ark 管运行时,s5 管共享内容。
 
+全开放共享模型(REQ-0002):桶与流对全 agent 自由开放,`s5 bucket
+create` 自助建桶(建桶即授权当前 key 读写),流 append 自动建。匿名
+语义边界:garage S3 面要 SigV4,由配置层吃掉(agent 永不接触钥);
+开放落在使用面,非网络面无鉴权;流道 lite 面无鉴权。
+
 后端(内网):文件道 garage v1.1.0(S3 兼容,path-style);流道 s2-lite
 (s2 官方自托管服务,basin/stream 面见 docs/knowledge/research/S001)。
 
-零感知凭据(ADR-0001):命令面零凭据参数,S3 key 与 S2 token 全在配置层
-(TOML 0600 密档加环境变量覆盖);内网边界即信任边界。
+零感知凭据(ADR-0001):命令面零凭据参数,S3 key 与 admin token、S2
+token 全在配置层(TOML 0600 密档加环境变量覆盖);内网边界即信任边界。
 
 ## 部署
 
@@ -26,12 +31,14 @@ cargo install --path .   # 或家族分发(ark install s5,首版后接)
 s5 config init                        # 落 0600 缺省配置(dev 指向)
 s5 config set s3.access_key_id GK…    # 写 dev key(总台发,.dev-key.txt 同源)
 s5 config set s3.secret_access_key …
+s5 config set s3.admin_token …        # 建桶道 bearer(garage admin,可选)
 s5 config show                        # 生效配置(密钥掩码,不回显明文)
 ```
 
 环境变量逐键覆盖(无头与测试):`S5_S3_ENDPOINT`、`S5_S3_REGION`、
 `S5_S3_BUCKET`、`S5_S3_ACCESS_KEY_ID`、`S5_S3_SECRET_ACCESS_KEY`、
-`S5_S2_ENDPOINT`、`S5_S2_BASIN`、`S5_S2_TOKEN`;`S5_CONFIG` 指配置文件路径。
+`S5_S3_ADMIN_ENDPOINT`、`S5_S3_ADMIN_TOKEN`、`S5_S2_ENDPOINT`、
+`S5_S2_BASIN`、`S5_S2_TOKEN`;`S5_CONFIG` 指配置文件路径。
 
 ## 使用方法
 
@@ -44,6 +51,7 @@ s5 get rounds/2026-10-11/a.txt         # 取回(原始字节到 stdout)
 s5 get rounds/2026-10-11/a.txt -o b.txt
 s5 ls rounds/                          # 前缀列(JSONL;空前缀全列)
 s5 del rounds/2026-10-11/a.txt         # 幂等删
+s5 bucket create s5-shared             # 自助建桶(授权当前 key 读写)
 ```
 
 流道(S2,一行一条记录;流名可含 / 那是名字字符;共享 basin 里建议

@@ -1877,6 +1877,7 @@ dependencies = [
  "futures-util",
  "object_store",
  "predicates",
+ "reqwest",
  "s2-sdk",
  "serde",
  "serde_json",

@@ -8,13 +8,13 @@ use std::io::{BufRead, Write};
 
 use clap::{CommandFactory, Parser, Subcommand};
 use s5::config::{Config, ConfigError};
-use s5::{filechan, llms, streamchan};
+use s5::{bucketchan, filechan, llms, streamchan};
 
 #[derive(Parser)]
 #[command(
     name = "s5",
     version,
-    about = "S5(Shared Store & Streams):agent 跨机共享 CLI(S3 文件道 put/get/ls/del 加 S2 流道 append/tail)",
+    about = "S5(Shared Store & Streams):agent 跨机共享 CLI(S3 文件道 put/get/ls/del 加 bucket create 建桶,流道 append/tail;全开放共享)",
     help_template = "{name}@{version} {about}\n\n{usage-heading} {usage}\n\n{all-args}{after-help}",
     after_help = "agent 手册面:s5 --llms(markdown 手册);s5 --llms --json(机器形)"
 )]
@@ -83,10 +83,24 @@ enum Commands {
         /// 流名前缀(可空)
         prefix: Option<String>,
     },
+    /// 建桶(garage admin 道:全开放共享,建桶即授权当前 key 读写)
+    Bucket {
+        #[command(subcommand)]
+        cmd: BucketCmd,
+    },
     /// 配置层(零感知凭据的落点:0600 密档 + 环境变量覆盖)
     Config {
         #[command(subcommand)]
         cmd: ConfigCmd,
+    },
+}
+
+#[derive(Subcommand)]
+enum BucketCmd {
+    /// 建全局名桶并授权配置层当前 s3 key 读写(重名报 BucketAlreadyExists)
+    Create {
+        /// 桶名(全局别名,非路径)
+        name: String,
     },
 }
 
@@ -96,7 +110,7 @@ enum ConfigCmd {
     Init,
     /// 展示生效配置(密钥类掩码,永不回显明文)
     Show,
-    /// 设一个配置键(点径:s3.endpoint/s3.region/s3.bucket/s3.access_key_id/s3.secret_access_key/s2.endpoint/s2.basin/s2.token)
+    /// 设一个配置键(点径:s3.endpoint/s3.region/s3.bucket/s3.access_key_id/s3.secret_access_key/s3.admin_endpoint/s3.admin_token/s2.endpoint/s2.basin/s2.token)
     Set {
         /// 点径键
         key: String,
@@ -326,6 +340,24 @@ async fn dispatch(cmd: Commands) -> Result<(), i32> {
                             serde_json::to_string(&row).expect("StreamRow 恒可序列化")
                         );
                     }
+                    Ok(())
+                }
+                Err(e) => {
+                    let code = e.code().to_string();
+                    let msg = e.message();
+                    Err(fail(&code, msg))
+                }
+            }
+        }
+        Commands::Bucket { cmd } => {
+            let BucketCmd::Create { name } = cmd;
+            let cfg = load_cfg()?;
+            match bucketchan::create(&cfg, &name).await {
+                Ok(out) => {
+                    println!(
+                        "{}",
+                        serde_json::to_string(&out).expect("建桶 ack 恒可序列化")
+                    );
                     Ok(())
                 }
                 Err(e) => {

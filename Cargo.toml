@@ -31,6 +31,9 @@ name = "s5"
 # 生成面、reqwest 与 s2-sdk 同 tokio 运行时;garage 兼容边界(无条件写、
 # 分片不上首版)见研究档。aws-sdk-s3 不选(默认校验和在兼容实现上的坑)。
 object_store = { version = "0.14", features = ["aws"] }
+# 建桶道 HTTP 件(garage v1 admin API,bearer + JSON body;object_store
+# 同源依赖树内件,零新增编译面;明文 http 内网 admin 面,无 TLS 需求)。
+reqwest = { version = "0.13", default-features = false }
 # 流道官方 SDK(tokio;lite 兼容 v0.22+;端点经 S2Endpoints::for_endpoint
 # 单 URL 双用,token 占位 ignored——lite 无鉴权面,命令面零凭据参数)。
 s2-sdk = "0.35"

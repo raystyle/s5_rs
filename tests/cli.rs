@@ -411,3 +411,105 @@ fn s2_tail_follow_runs_until_killed() {
     let text = String::from_utf8_lossy(&out.stdout);
     assert!(text.contains("hist"), "跟随先出历史:{text}");
 }
+
+/// 建桶道:admin 道未配(缺 admin_token)即拒,零网络依赖恒跑。
+#[test]
+fn bucket_create_requires_admin_config() {
+    let ctx = Ctx {
+        cfg: temp_dir("bkt-nocfg").join("config.toml"),
+        s2_endpoint: None,
+    };
+    let _ = std::fs::remove_file(&ctx.cfg);
+    ctx.run().args(["config", "init"]).assert().success();
+    ctx.run()
+        .args(["bucket", "create", "some-bucket"])
+        .assert()
+        .failure()
+        .stderr(
+            predicates::str::contains("\"code\":\"Config\"")
+                .and(predicates::str::contains("admin 道未配")),
+        );
+}
+
+/// 建桶道真回环(garage admin):建桶即授权当前 key,新桶立即可写读。
+/// 门控:`S5_TEST_GARAGE_ADMIN=1` 加 `S5_S3_ADMIN_TOKEN`(admin bearer)
+/// 加 garage 可达;缺件跳过。收尾尽力删测试桶(admin DELETE)。
+#[test]
+fn bucket_create_grants_and_roundtrip_on_garage() {
+    if std::env::var("S5_TEST_GARAGE_ADMIN").ok().as_deref() != Some("1") {
+        eprintln!("SKIP: S5_TEST_GARAGE_ADMIN 未设");
+        return;
+    }
+    let Ok(admin_token) = std::env::var("S5_S3_ADMIN_TOKEN") else {
+        eprintln!("SKIP: S5_S3_ADMIN_TOKEN 未设");
+        return;
+    };
+    let Some(mut ctx) = s3_ctx("bkt-live") else {
+        eprintln!("SKIP: 文件道前置件缺(dev key 或 garage 不可达)");
+        return;
+    };
+    ctx.s2_endpoint = None;
+    let admin_ep =
+        std::env::var("S5_S3_ADMIN_ENDPOINT").unwrap_or_else(|_| "http://192.168.88.2:3903".into());
+    let name = format!("s5-it-bucket-{}", std::process::id());
+
+    let out = ctx
+        .run()
+        .env("S5_S3_ADMIN_ENDPOINT", &admin_ep)
+        .env("S5_S3_ADMIN_TOKEN", &admin_token)
+        .args(["bucket", "create", &name])
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+    let ack: serde_json::Value = serde_json::from_slice(&out).expect("建桶 ack 恒 JSON");
+    assert_eq!(ack["bucket"], name.as_str(), "ack 带桶名:{ack}");
+    assert!(ack["key_granted"].is_string(), "建桶即授权当前 key:{ack}");
+    let id = ack["id"].as_str().expect("ack 带 bucket id").to_string();
+
+    // 新桶立即可写读(授权生效面)。
+    let put_key = "it/bucket-probe.txt";
+    let mut child = Command::new(env!("CARGO_BIN_EXE_s5"))
+        .env("S5_CONFIG", &ctx.cfg)
+        .env("S5_S3_BUCKET", &name)
+        .args(["put", "-", put_key])
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::inherit())
+        .spawn()
+        .expect("起 s5 put -");
+    child
+        .stdin
+        .as_mut()
+        .expect("stdin 恒管道")
+        .write_all(b"bucket probe\n")
+        .unwrap();
+    let put_out = child.wait_with_output().unwrap();
+    assert!(put_out.status.success(), "新桶 put 应成功");
+    let get_out = ctx
+        .run()
+        .env("S5_S3_BUCKET", &name)
+        .args(["get", put_key])
+        .output()
+        .expect("起 s5 get");
+    assert!(get_out.status.success(), "新桶 get 应成功");
+    assert_eq!(String::from_utf8_lossy(&get_out.stdout), "bucket probe\n");
+
+    // 收尾:尽力删测试桶(连对象;失败不判负,留痕在回执)。
+    let del = format!(
+        "{}/v1/bucket?id={id}&delete-objects=true",
+        admin_ep.trim_end_matches('/')
+    );
+    let _ = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .expect("测试清尾 tokio 运行时")
+        .block_on(async move {
+            reqwest::Client::new()
+                .delete(&del)
+                .header("authorization", format!("Bearer {admin_token}"))
+                .send()
+                .await
+        });
+}

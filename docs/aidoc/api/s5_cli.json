@@ -3,6 +3,21 @@
   "version": "0.1.0",
   "items": [
     {
+      "path": "s5_cli::bucketchan",
+      "kind": "module",
+      "docs": "建桶道:garage Admin API 封装(全开放共享模型,`s5 bucket create`)。\n\n全开放共享模型(REQ-0002):桶与流对全 agent 自由开放。建流已自由\n(append 自动建);建桶走 garage admin 道:v1 Admin API(garage\nv1.1.0 部署面)的 `POST /v1/bucket` 与 `POST /v1/bucket/allow`,\nbearer token 收配置层 0600 密档(`s3.admin_endpoint`/\n`s3.admin_token`),agent 命令面零凭据。建桶即授权配置层当前\ns3 key 读写(非 owner),后续 put/get/ls/del 即用。garage 2.x 的\nv2 admin API(`/v2/CreateBucket` 族)契约不同,当界外。\n\n匿名语义边界:garage S3 面要 SigV4,由配置层吃掉(agent 永不接触\n钥);\"全开放\"落在 agent 使用面(共享配置即可自由读写),非网络面\n无鉴权;流道 lite 面无鉴权,天然匿名可用。"
+    },
+    {
+      "path": "s5_cli::bucketchan::BucketError",
+      "kind": "enum",
+      "docs": "一处建桶道错误(信封 code 与 message 供 CLI 出 stderr)。"
+    },
+    {
+      "path": "s5_cli::bucketchan::create",
+      "kind": "function",
+      "docs": "建全局名桶并授权配置层当前 s3 key 读写。\n\n返回单行 ack 形 `{bucket, id, key_granted}`(key 未配时\n`key_granted` 为 null,桶照建,授权面留待后补)。授权失败时桶已\n存在,message 前缀如实标注部分态。\n\n# Errors\n\nadmin 道未配([`BucketError::NotConfigured`)、桶名空\n([`BucketError::InvalidName`)、admin API 拒绝与传输失败\n([`BucketError::Admin`]/[`BucketError::Transport`])。"
+    },
+    {
       "path": "s5_cli::config",
       "kind": "module",
       "docs": "配置层:零感知凭据的落点(ADR-0001)。\n\ngarage 实测不支持匿名访问,凭据(S3 key 与 S2 token)收进本层;agent\n命令面零凭据参数。配置文件 TOML 0600(`S5_CONFIG` 覆盖路径,缺省\nXDG `s5/config.toml`),不进 git;环境变量逐键覆盖(测试与无头场景)。\n\n读序:环境变量 > 配置文件 > 随包缺省(内网 dev 指向;生产切换只改配置)。"
