@@ -122,10 +122,16 @@ fn bare_call_prints_help_exit_zero() {
 
 #[test]
 fn llms_manual_and_machine_forms() {
-    s5().arg("--llms")
+    let manual = s5()
+        .arg("--llms")
         .assert()
         .success()
-        .stdout(predicates::str::contains("s5 append").and(predicates::str::contains("退出码")));
+        .get_output()
+        .stdout
+        .clone();
+    let manual = String::from_utf8_lossy(&manual);
+    assert!(manual.lines().count() <= 120, "手册至多 120 行(发现面纪律)");
+    assert!(manual.contains("退出码"), "手册带退出码节");
     let out = s5()
         .args(["--llms", "--json"])
         .assert()
@@ -134,16 +140,51 @@ fn llms_manual_and_machine_forms() {
         .stdout
         .clone();
     let v: serde_json::Value = serde_json::from_slice(&out).expect("机器形恒为 JSON");
-    let names: Vec<&str> = v["commands"]
+    // 漂移守卫(doc-cli 三面同源):命令集穷尽对锁,新增命令漏手册面即红。
+    let mut names: Vec<String> = v["commands"]
         .as_array()
         .expect("commands 是数组")
         .iter()
-        .map(|c| c["name"].as_str().expect("名恒在"))
+        .map(|c| c["name"].as_str().expect("名恒在").to_string())
         .collect();
-    for expect in [
-        "put", "get", "ls", "del", "append", "tail", "streams", "config",
-    ] {
-        assert!(names.contains(&expect), "机器形缺命令 {expect}:{names:?}");
+    names.sort();
+    let mut expect = [
+        "put", "get", "ls", "del", "append", "tail", "streams", "bucket", "config",
+    ]
+    .map(String::from)
+    .to_vec();
+    expect.sort();
+    assert_eq!(names, expect, "机器形命令集穷尽对锁");
+    // 组形子命令与手册面同步对锁(config 与 bucket 两组)。
+    let subs = |group: &str| -> Vec<String> {
+        v["commands"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|c| c["name"] == group)
+            .and_then(|c| c["subcommands"].as_array())
+            .map(|a| {
+                a.iter()
+                    .map(|s| s["name"].as_str().expect("子命令名恒在").to_string())
+                    .collect()
+            })
+            .unwrap_or_default()
+    };
+    assert_eq!(
+        subs("config"),
+        ["init", "show", "set", "path"].map(String::from).to_vec(),
+        "config 子命令对锁"
+    );
+    assert_eq!(
+        subs("bucket"),
+        ["create"].map(String::from).to_vec(),
+        "bucket 子命令对锁"
+    );
+    for name in &expect {
+        assert!(
+            manual.contains(&format!("s5 {name}")),
+            "手册面缺命令 {name}"
+        );
     }
 }
 
