@@ -1,6 +1,7 @@
 //! s5 CLI 入口:文件道与流道子命令分发、`--llms` 手册面与错误信封出口。
 //!
-//! 裸 `s5` 打印帮助退 0(agent 裸调用面恒成功);错误 stderr 单行 JSON
+//! 裸 `s5` 打印帮助退 0(agent 裸调用面恒成功);`--help`/`--version`
+//! 展示面 stdout 退 0;错误 stderr 单行 JSON
 //! {code, message} 退 1(解析级用法错同通道,不占 2);`tail -f` SIGINT
 //! 退 130。
 
@@ -122,13 +123,14 @@ enum ConfigCmd {
 }
 
 fn main() {
-    // 解析级用法错退 1(与业务错同通道,不占 2;家族形 hst REQ-032)。
+    // 解析级分流:clap 展示类(--help/--version)stdout 退 0(agent 帮助
+    // 面恒成功);用法错 stderr 退 1(与业务错同通道,不占 2;家族形
+    // hst REQ-032)。
     let cli = match Cli::try_parse() {
         Ok(c) => c,
         Err(e) => {
-            let mut stderr = std::io::stderr().lock();
-            let _ = writeln!(stderr, "{}", e.render());
-            std::process::exit(1);
+            let _ = e.print();
+            std::process::exit(i32::from(e.use_stderr()));
         }
     };
     if cli.llms {

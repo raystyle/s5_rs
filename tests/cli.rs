@@ -193,6 +193,25 @@ fn json_flag_requires_llms() {
     s5().arg("--json").assert().failure().code(1);
 }
 
+/// 帮助与版本展示面 exit 0(agent 帮助面恒成功;mac 冒烟实案补测)。
+#[test]
+fn help_and_version_exit_zero() {
+    s5().arg("--help")
+        .assert()
+        .success()
+        .stdout(predicates::str::contains("Usage: s5"));
+    s5().arg("--version")
+        .assert()
+        .success()
+        .stdout(predicates::str::starts_with("s5 "));
+    s5().args(["bucket", "create", "--help"])
+        .assert()
+        .success()
+        .stdout(predicates::str::contains("桶名"));
+    // 用法错仍退 1(stderr 面,家族形不占 2)。
+    s5().arg("--no-such-flag").assert().failure().code(1);
+}
+
 #[test]
 fn config_face_roundtrip() {
     let ctx = Ctx {
