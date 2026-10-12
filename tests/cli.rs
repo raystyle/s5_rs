@@ -481,7 +481,11 @@ fn bucket_create_requires_admin_config() {
     };
     let _ = std::fs::remove_file(&ctx.cfg);
     ctx.run().args(["config", "init"]).assert().success();
+    // 隔离:门控跑(S5_TEST_GARAGE_ADMIN 面)时剥掉 admin 环境,别让
+    // 环境覆盖把"未配"测成"真建桶"。
     ctx.run()
+        .env_remove("S5_S3_ADMIN_ENDPOINT")
+        .env_remove("S5_S3_ADMIN_TOKEN")
         .args(["bucket", "create", "some-bucket"])
         .assert()
         .failure()
@@ -556,11 +560,14 @@ fn bucket_create_grants_and_roundtrip_on_garage() {
     assert!(get_out.status.success(), "新桶 get 应成功");
     assert_eq!(String::from_utf8_lossy(&get_out.stdout), "bucket probe\n");
 
-    // 收尾:尽力删测试桶(连对象;失败不判负,留痕在回执)。
-    let del = format!(
-        "{}/v1/bucket?id={id}&delete-objects=true",
-        admin_ep.trim_end_matches('/')
-    );
+    // 收尾:尽力删测试桶(v1.1.0 无 delete-objects 参数,先清对象再
+    // DELETE ?id=;失败不判负,留痕在回执)。
+    let _ = Command::new(env!("CARGO_BIN_EXE_s5"))
+        .env("S5_CONFIG", &ctx.cfg)
+        .env("S5_S3_BUCKET", &name)
+        .args(["del", put_key])
+        .status();
+    let del = format!("{}/v1/bucket?id={id}", admin_ep.trim_end_matches('/'));
     let _ = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()

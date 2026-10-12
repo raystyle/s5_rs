@@ -50,8 +50,13 @@ REQ-0002 全开放共享模型要 `s5 bucket create <名>`(garage admin 道,
   总台,agent 不删桶),后端字符串 code 原码透传。
 - 本工位 wire 实测(2026-10-12):假 bearer 打 3903 得 403,信封
   AccessDenied,消息取自服务端体 [已验证];200 BucketInfo 与 409
-  形状源码已核 [已观察],真 token 建桶回环待 token 配发补跑
-  [待验]。
+  形状源码已核 [已观察];admin token 配发后真回环补跑已毕:双面
+  (wsl 加 lan-ubuntu)`bucket create` 建桶、授权即写读、门控测试
+  `bucket_create_grants_and_roundtrip_on_garage` 全过 [已验证]。
+- 补实(2026-10-12):DELETE /v1/bucket 对空桶 204;`delete-objects`
+  参数 v1.1.0 不认(非空桶三形皆 409 BucketNotEmpty),清桶须先删
+  对象 [已验证];CLI 面同理(`garage bucket delete --yes` 无清对象
+  旗标)。
 
 ## 踩坑沉淀
 
@@ -63,8 +68,8 @@ REQ-0002 全开放共享模型要 `s5 bucket create <名>`(garage admin 道,
 
 ## 待办
 
-- admin token 配发后:S5_TEST_GARAGE_ADMIN=1 加 S5_S3_ADMIN_TOKEN
-  补真回环(建桶、授权即用、409 形状、清尾)。
+- (已闭,2026-10-12)admin token 双面配发与真回环:门控测试全过,
+  409 形状与清桶路径坐实。
 
 ## 信源
 
